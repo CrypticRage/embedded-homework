@@ -22,7 +22,7 @@ My code is entirely mine, and written in C++ with C calls when needed.
 * Contains code for three classes: Socket, MasterSocket, and ClientSocketSet.
   * Socket is a simple base class that wraps a file descriptor (int) used by the client sockets. Helper functions are provided to send and receive data.
   * MasterSocket contains code to init an IPV4 TCP socket and listen for connections on a single port. It inherits from Socket.
-  * ClientSocketSet wraps a simple list of Socket instances, one for each client connection. It provides helper functions for broadcasting data to all clients, closing the client connections, and adding clients to file descriptor sets. This class would be much more efficient if I had used an ordered map to store the Sockets. Removing a disconnected client would go from O(n) to contant time, along with updating the max file descritor.
+  * ClientSocketSet wraps a simple list of Socket instances, one for each client connection. It provides helper functions for broadcasting data to all clients, closing the client connections, and adding clients to file descriptor sets. This class would be much more efficient if I had used an ordered map to store the Sockets. Removing a disconnected client would go from O(n) to constant time, along with updating the max file descriptor.
 
 ### 
 
