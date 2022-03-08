@@ -8,9 +8,9 @@ Please see the README for the requirements and details.
 
 ## Design Process
 
-I started with an existing implementation of a daemon that echoed back messages from multiple clients in a single thread. It was written in C in single source file. When sockets are involved (or anything POSIX related), I like having a working example to reference because it's much easier than just digging through man pages.
+I started with an existing implementation of a daemon that echoed back messages from multiple clients in a single thread. It was written in C, in a single source file. When sockets are involved (or anything POSIX related), I like having a working example to reference because it's much easier than just digging through man pages.
 
-My code is entirely mine, and written in C++ with C calls when needed.
+This code is entirely mine, and written in C++ with C calls when needed.
 
 ### count (cpp)
 * Contains main() and an infinite loop that blocks on a call to select() after initializing a file descriptor set. select() will return if there is any data available on the file descriptors. Initially, this set only contains the master socket. Additional sockets are created upon connection from clients.
@@ -22,7 +22,7 @@ My code is entirely mine, and written in C++ with C calls when needed.
 * Contains code for three classes: Socket, MasterSocket, and ClientSocketSet.
   * Socket is a simple base class that wraps a file descriptor (int) used by the client sockets. Helper functions are provided to send and receive data.
   * MasterSocket contains code to init an IPV4 TCP socket and listen for connections on a single port. It inherits from Socket.
-  * ClientSocketSet wraps a simple list of Socket instances, one for each client connection. It provides helper functions for broadcasting data to all clients, closing the client connections, and adding clients to file descriptor sets. This class would be much more efficient if I had used an ordered map to store the Sockets. Removing a disconnected client would go from O(n) to constant time, along with updating the max file descriptor.
+  * ClientSocketSet wraps a simple list of Socket instances, one for each client connection. It provides helper functions for broadcasting data to all clients, closing the client connections, and adding clients to file descriptor sets. This class would be much more efficient if I had used an ordered map to store the Sockets. Removing a disconnected client would go from O(n) to constant time, as would finding the max file descriptor after a removal.
 
 ### 
 
