@@ -23,6 +23,7 @@ void signalHandler(int signum)
 {
     std::cout << "caught signal: " << signum << std::endl;
     
+    // clean up
     clientSockets.closeAll();
     masterSocket.close();
 
@@ -53,9 +54,11 @@ int main(void)
         // add the child sockets to the set
         clientSockets.addAllToSet(readDescSet);
 
-        // wait indefinetely for activity on a socket desc
+        // find the max file descriptor
         int maxDesc = clientSockets.maxDesc() > masterSocket.desc() ?
             clientSockets.maxDesc() : masterSocket.desc();
+
+        // wait indefinetely for activity on a socket desc
         int active = select(maxDesc + 1, &readDescSet, NULL, NULL, NULL);
         
         if ((active < 0) && (errno != EINTR)) {
