@@ -16,7 +16,7 @@ This code is entirely mine, and written in C++ with C calls when needed.
 * Contains main() and an infinite loop that blocks on a call to select() after initializing a file descriptor set. select() will return if there is any data available on the file descriptors. Initially, this set only contains the master socket. Additional sockets are created upon connection from clients.
 
 ### command (hpp/cpp)
-* Contains the command string parser. The parseCommand() function is a static factory that returns a unique_ptr to a descendant of the base class Command. The Command class implements a simple command pattern with the virtual function execute(), which is overriden by each subclass to perform whatever task the command needs.
+* Contains the command string parser. The parseCommand() function is a static factory that returns a unique_ptr to a descendant of the base class Command. The Command class implements a simple command pattern with the virtual function execute(), which is overriden by each subclass to perform whatever task the command requires.
 
 ### socket (hpp)
 * Contains code for three classes: Socket, MasterSocket, and ClientSocketSet.
@@ -86,7 +86,7 @@ In this example, there are also StartLimitIntervalSec and StartLimitBurst direct
 ### STDERR To Journal
 https://www.freedesktop.org/software/systemd/man/systemd.exec.html
 
-Make sure the following lines are in you service file:
+Make sure the following lines are in your service file:
 ```
 StandardOutput=journal
 StandardError=journal
