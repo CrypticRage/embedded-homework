@@ -15,12 +15,12 @@ class Command
     protected:
         std::string name_;
         char *buffer_;
-        
-    public:
+
         Command(const std::string &name) : name_(name) {
             buffer_ = (char *)malloc(sizeof(char) * BUFFER_SIZE);
         }
 
+    public:
         ~Command() {
             free(buffer_);
         }

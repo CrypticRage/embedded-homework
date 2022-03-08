@@ -13,14 +13,25 @@
 using namespace Density;
 
 int masterCount = 0;
+Command *currentCommand = nullptr;
+
 MasterSocket masterSocket(PORT);
 ClientSocketSet clientSockets(MAX_CLIENTS);
+
 fd_set readDescSet;
 char buffer[BUFFER_SIZE];
 
 void signalHandler(int signum)
 {
     std::cout << "caught signal: " << signum << std::endl;
+    
+    // clean up
+    if (nullptr != currentCommand) {
+        delete currentCommand;
+        currentCommand = nullptr;
+    }
+
+    std::cout << "exiting, final count: " << masterCount << std::endl;
     exit(signum);
 }
 
@@ -43,7 +54,7 @@ int main(void)
         }
 
         // add the child sockets to the set
-        clientSockets.addAllActiveToSet(readDescSet);
+        clientSockets.addAllToSet(readDescSet);
 
         // wait indefinetely for activity on a socket desc
         int maxDesc = clientSockets.maxDesc() > masterSocket.desc() ?
@@ -61,31 +72,32 @@ int main(void)
                 perror("accept() failed\n");
                 break;
             }
-            clientSockets.addActive(socketDesc);
+            clientSockets.add(socketDesc);
             std::cout << "Connection established!" << std::endl;
         }
         
         // check the client sockets
-        std::vector<Socket> readSockets = clientSockets.getSocketsWithData(readDescSet);
-        std::cout << "Socket read count: " << readSockets.size() << std::endl;
+        std::vector<Socket> readSockets = clientSockets.getSocketsInSet(readDescSet);
+        // std::cout << "Socket read count: " << readSockets.size() << std::endl;
         for (Socket socket : readSockets) {
             int bytes = socket.read(buffer, BUFFER_SIZE);
             if (bytes == 0) {
                 std::cout << "closing socket: " << socket.desc() << std::endl;
-            }
+                socket.close();
+                clientSockets.remove(socket.desc());
+            } 
             else {
-                Command *command = Command::parseCommand(std::string(buffer));
-                if (nullptr == command) {
+                currentCommand = Command::parseCommand(std::string(buffer));
+                if (nullptr == currentCommand) {
                     continue;
                 }
 
-                command->execute(clientSockets, socket, masterCount);
-                delete command;
+                currentCommand->execute(clientSockets, socket, masterCount);
+                delete currentCommand;
+                currentCommand = nullptr;
             }
         }
     }
-
-    std::cout << "Exiting" << std::endl;
 
     return 0;
 }

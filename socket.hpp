@@ -7,6 +7,7 @@
 #include <sys/socket.h>
 
 #include <iostream>
+#include <list>
 #include <vector>
 
 #define MAX_PENDING_CONNECTIONS 10
@@ -19,13 +20,18 @@ class Socket
 
     public:
         Socket() : desc_(0) { }
+        ~Socket() {
+            std::cout << "~Socket()" << std::endl;
+        }
+
+        Socket(int desc) : desc_(desc) { }
         int desc() { return desc_; }
         void setDesc(int d) { desc_ = d; }
 
         int read(char *buffer, int count) {
             if (buffer == nullptr) return 0;
             if (count < 0) return 0;
-            if (desc_ == 0) return 0;
+            if (desc_ <= 0) return 0;
 
             return ::read(desc_, buffer, count);
         }
@@ -33,7 +39,7 @@ class Socket
         int send(char *buffer, int count) {
             if (buffer == nullptr) return 0;
             if (count < 0) return 0;
-            if (desc_ == 0) return 0;
+            if (desc_ <= 0) return 0;
 
             return ::send(desc_, buffer, count, 0);
         }
@@ -54,8 +60,9 @@ class Socket
         }
 
         void close() {
-            if (desc_ > 0)
-                ::close(desc_);
+            if (::close(desc_) < 0) {
+                perror("close() failed");
+            }
         }
 };
 
@@ -112,53 +119,69 @@ class MasterSocket : public Socket
 
 class ClientSocketSet
 {
-    std::vector<Socket> sockets_;
-    int maxSockets_;
+    std::list<Socket> sockets_;
+    uint16_t maxSockets_;
     int maxSocketDesc_;
-    int nextIndex_;
 
     public:
-        ClientSocketSet(int maxSockets) : maxSockets_(maxSockets), nextIndex_(0) {
-            for (int i = 0; i < maxSockets; i++) {
-                sockets_.emplace_back();
-            }
-        }
+        ClientSocketSet(uint16_t maxSockets) : maxSockets_(maxSockets) { }
+
+        ClientSocketSet(const ClientSocketSet&) = delete;
+        ClientSocketSet(ClientSocketSet&&) = delete;
+        ClientSocketSet& operator=(const ClientSocketSet&) = delete;
+        ClientSocketSet& operator=(ClientSocketSet&&) = delete;
 
         void broadcast(char *buffer, int count) {
             if (sockets_.empty()) return;
             if (buffer == nullptr) return;
             if (count < 0) return;
 
-            for (Socket socket : sockets_) {
-                if (socket.desc() > 0) {
-                    socket.send(buffer, count);
-                }
+            for (Socket &socket : sockets_) {
+                socket.send(buffer, count);
             }
         }
 
-        void addActive(int desc) {
-            if (nextIndex_ >= maxSockets_) return;
-            sockets_[nextIndex_].setDesc(desc);
+        void add(int desc) {
+            if (desc <= 0) return;
+            if (size() >= maxSockets_) return;
+
+            sockets_.emplace_back((desc));
             if (desc > maxSocketDesc_) maxSocketDesc_ = desc;
+        }
 
-            for (int i = 0; i < sockets_.size(); i++) {
-                if (sockets_[i].desc() == 0) nextIndex_ = i;
+        void remove(int desc) {
+            std::list<Socket>::iterator i;
+            for (i = sockets_.begin(); i != sockets_.end(); i++) {
+                if (i->desc() == desc) {
+                    break;
+                }
+            }
+            if (i == sockets_.end()) return;
+
+            sockets_.erase(i);
+
+            if (maxSocketDesc_ > desc) return;
+
+            maxSocketDesc_ = 0;        
+            for (Socket &socket : sockets_) {
+                if (socket.desc() > maxSocketDesc_)
+                    maxSocketDesc_ = socket.desc();
             }
         }
 
-        bool addAllActiveToSet(fd_set &descSet) {
-            for (Socket socket : sockets_) {
-                if(socket.desc() > 0) {
-                    if (!socket.addToSet(descSet)) return false;
-                }
-            }            
+        bool addAllToSet(fd_set &descSet) {
+            for (Socket &socket : sockets_) {
+                if (!socket.addToSet(descSet)) return false;
+            }
+
             return true;
         }
 
-        std::vector<Socket> getSocketsWithData(fd_set &descSet) {
+        std::vector<Socket> getSocketsInSet(fd_set &descSet) {
             std::vector<Socket> dataSockets;
-            for (Socket socket : sockets_) {
-                if (socket.isSet(descSet)) dataSockets.push_back(socket);
+            for (Socket &socket : sockets_) {
+                if (socket.isSet(descSet))
+                    dataSockets.push_back(socket);
             }
             return dataSockets;
         }
