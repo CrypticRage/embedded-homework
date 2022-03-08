@@ -7,38 +7,35 @@
 #include <csignal>
 
 #include <vector>
+#include <array>
 #include <iostream>
 #include <string>
+#include <memory>
 
 using namespace Density;
 
 int masterCount = 0;
-Command *currentCommand = nullptr;
-
 MasterSocket masterSocket(PORT);
 ClientSocketSet clientSockets(MAX_CLIENTS);
-
-fd_set readDescSet;
-char buffer[BUFFER_SIZE];
+std::array<char, BUFFER_SIZE> buffer;
 
 void signalHandler(int signum)
 {
     std::cout << "caught signal: " << signum << std::endl;
     
-    // clean up
-    if (nullptr != currentCommand) {
-        delete currentCommand;
-        currentCommand = nullptr;
-    }
+    clientSockets.closeAll();
+    masterSocket.close();
 
     std::cout << "exiting, final count: " << masterCount << std::endl;
-    exit(signum);
+    exit(0);
 }
 
 int main(void)
 {
     signal(SIGTERM, signalHandler);
     signal(SIGINT, signalHandler);
+
+    fd_set readDescSet;
 
     if (!masterSocket.init()) {
         exit(1);
@@ -73,28 +70,26 @@ int main(void)
                 break;
             }
             clientSockets.add(socketDesc);
-            std::cout << "Connection established!" << std::endl;
+            std::cout << "Connection established. Clients: " << clientSockets.size() << std::endl;
         }
         
         // check the client sockets
         std::vector<Socket> readSockets = clientSockets.getSocketsInSet(readDescSet);
         // std::cout << "Socket read count: " << readSockets.size() << std::endl;
-        for (Socket socket : readSockets) {
-            int bytes = socket.read(buffer, BUFFER_SIZE);
+        for (Socket &socket : readSockets) {
+            int bytes = socket.read(buffer.data(), BUFFER_SIZE);
             if (bytes == 0) {
                 std::cout << "closing socket: " << socket.desc() << std::endl;
                 socket.close();
                 clientSockets.remove(socket.desc());
             } 
             else {
-                currentCommand = Command::parseCommand(std::string(buffer));
-                if (nullptr == currentCommand) {
+                std::unique_ptr<Command> currentCommand = Command::parseCommand(std::string(buffer.data()));
+                if (!currentCommand) {
                     continue;
                 }
 
                 currentCommand->execute(clientSockets, socket, masterCount);
-                delete currentCommand;
-                currentCommand = nullptr;
             }
         }
     }

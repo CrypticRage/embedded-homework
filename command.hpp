@@ -5,6 +5,9 @@
 
 #include <string>
 #include <vector>
+#include <array>
+#include <memory>
+
 #include <cstdio>
 
 namespace Density {
@@ -14,20 +17,14 @@ class Command
 
     protected:
         std::string name_;
-        char *buffer_;
+        std::array<char, BUFFER_SIZE> buffer_;
 
-        Command(const std::string &name) : name_(name) {
-            buffer_ = (char *)malloc(sizeof(char) * BUFFER_SIZE);
-        }
+        Command(const std::string &name) : name_(name) { }
 
     public:
-        ~Command() {
-            free(buffer_);
-        }
-
         virtual void execute(ClientSocketSet &sockets, Socket &client, int &masterCount) { };
 
-        static Command *parseCommand(const std::string &commandString);
+        static std::unique_ptr<Command> parseCommand(const std::string &commandString);
 };
 
 class OutputCommand : public Command
@@ -36,9 +33,9 @@ class OutputCommand : public Command
         OutputCommand(const std::string &name) : Command(name) { }
 
         void execute(ClientSocketSet &sockets, Socket &client, int &masterCount) {
-            int n = sprintf(buffer_, "%d\n", masterCount);
+            int n = sprintf(buffer_.data(), "%d\n", masterCount);
             if (n > 0)
-                client.send(buffer_, n);
+                client.send(buffer_.data(), n);
         }
 };
 
@@ -51,9 +48,9 @@ class IncrCommand : public Command
 
         void execute(ClientSocketSet &sockets, Socket &client, int &masterCount) {
             masterCount += value_;
-            int n = sprintf(buffer_, "%d\n", masterCount);
+            int n = sprintf(buffer_.data(), "%d\n", masterCount);
             if (n > 0)
-                sockets.broadcast(buffer_, n);
+                sockets.broadcast(buffer_.data(), n);
         }
 };
 
@@ -66,9 +63,9 @@ class DecrCommand : public Command
 
         void execute(ClientSocketSet &sockets, Socket &client, int &masterCount) {
             masterCount -= value_;
-            int n = sprintf(buffer_, "%d\n", masterCount);
+            int n = sprintf(buffer_.data(), "%d\n", masterCount);
             if (n > 0)
-                sockets.broadcast(buffer_, n);
+                sockets.broadcast(buffer_.data(), n);
         }
 };
 }

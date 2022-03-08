@@ -20,9 +20,6 @@ class Socket
 
     public:
         Socket() : desc_(0) { }
-        ~Socket() {
-            std::cout << "~Socket()" << std::endl;
-        }
 
         Socket(int desc) : desc_(desc) { }
         int desc() { return desc_; }
@@ -126,11 +123,6 @@ class ClientSocketSet
     public:
         ClientSocketSet(uint16_t maxSockets) : maxSockets_(maxSockets) { }
 
-        ClientSocketSet(const ClientSocketSet&) = delete;
-        ClientSocketSet(ClientSocketSet&&) = delete;
-        ClientSocketSet& operator=(const ClientSocketSet&) = delete;
-        ClientSocketSet& operator=(ClientSocketSet&&) = delete;
-
         void broadcast(char *buffer, int count) {
             if (sockets_.empty()) return;
             if (buffer == nullptr) return;
@@ -166,6 +158,12 @@ class ClientSocketSet
             for (Socket &socket : sockets_) {
                 if (socket.desc() > maxSocketDesc_)
                     maxSocketDesc_ = socket.desc();
+            }
+        }
+
+        void closeAll() {
+            for (Socket &socket : sockets_) {
+                socket.close();
             }
         }
 
